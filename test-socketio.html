@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WhatsApp Clone - Socket.IO Test</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: 'Segoe UI', Arial, sans-serif; 
+      background: #f0f2f5;
+      padding: 20px;
+    }
+    .container { 
+      max-width: 800px; 
+      margin: 0 auto; 
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    .header {
+      background: #075e54;
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+    .login-section, .chat-section {
+      padding: 20px;
+    }
+    .chat-section { display: none; }
+    input, button {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+    button {
+      background: #25d366;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover { background: #20ba59; }
+    button:disabled { 
+      background: #ccc; 
+      cursor: not-allowed; 
+    }
+    .messages {
+      height: 400px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      padding: 15px;
+      margin: 10px 0;
+      background: #e5ddd5;
+      border-radius: 5px;
+    }
+    .message {
+      padding: 8px 12px;
+      margin: 5px 0;
+      border-radius: 8px;
+      max-width: 70%;
+      word-wrap: break-word;
+    }
+    .message.sent {
+      background: #dcf8c6;
+      margin-left: auto;
+      text-align: right;
+    }
+    .message.received {
+      background: white;
+    }
+    .message-info {
+      font-size: 11px;
+      color: #667781;
+      margin-top: 4px;
+    }
+    .status {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 5px;
+      font-size: 13px;
+    }
+    .status.success { background: #d4edda; color: #155724; }
+    .status.error { background: #f8d7da; color: #721c24; }
+    .status.info { background: #d1ecf1; color: #0c5460; }
+    .input-group {
+      display: flex;
+      gap: 10px;
+    }
+    .input-group input { flex: 1; }
+    .input-group button { width: auto; padding: 12px 24px; }
+    .user-info {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 5px;
+      margin-bottom: 15px;
+    }
+    .user-info h3 { margin-bottom: 5px; color: #075e54; }
+    .user-info p { font-size: 13px; color: #667781; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🚀 WhatsApp Clone - Real-Time Test</h1>
+      <p>Testing Socket.IO Connection & Messaging</p>
+    </div>
+
+    <!-- Login Section -->
+    <div class="login-section" id="loginSection">
+      <h2>Step 1: Login</h2>
+      <p style="color: #667781; margin: 10px 0;">Use credentials from Postman registration</p>
+      
+      <input type="email" id="email" placeholder="Email" value="test@example.com">
+      <input type="password" id="password" placeholder="Password" value="test123">
+      <button onclick="login()">Login & Connect</button>
+      
+      <div id="loginStatus"></div>
+    </div>
+
+    <!-- Chat Section -->
+    <div class="chat-section" id="chatSection">
+      <div class="user-info">
+        <h3 id="userName">User Name</h3>
+        <p id="userEmail">user@email.com</p>
+        <p><strong>Status:</strong> <span id="connectionStatus">Disconnected</span></p>
+      </div>
+
+      <h2>Real-Time Chat Test</h2>
+      
+      <div class="messages" id="messages">
+        <div class="status info">
+          📡 Connected! Open this page in another browser/tab to test real-time messaging.
+        </div>
+      </div>
+
+      <div class="input-group">
+        <input type="text" id="chatId" placeholder="Chat ID (create one in Postman or use test-chat-123)" value="test-chat-123">
+        <button onclick="joinChat()">Join Chat</button>
+      </div>
+
+      <div class="input-group">
+        <input type="text" id="messageInput" placeholder="Type a message..." onkeypress="handleKeyPress(event)">
+        <button onclick="sendMessage()">Send</button>
+      </div>
+
+      <button onclick="logout()" style="background: #dc3545; margin-top: 10px;">Logout</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+  <script>
+    let socket = null;
+    let token = null;
+    let currentUser = null;
+    let currentChatId = null;
+
+    const API_URL = 'http://localhost:3000';
+
+    function showStatus(message, type = 'info', elementId = 'loginStatus') {
+      const statusDiv = document.getElementById(elementId);
+      statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+    }
+
+    async function login() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      if (!email || !password) {
+        showStatus('Please enter email and password', 'error');
+        return;
+      }
+
+      try {
+        showStatus('Logging in...', 'info');
+
+        const response = await fetch(`${API_URL}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          token = data.token;
+          currentUser = data.user;
+          
+          showStatus('✅ Login successful! Connecting to WebSocket...', 'success');
+          
+          setTimeout(() => {
+            connectSocket();
+            showChatSection();
+          }, 1000);
+        } else {
+          showStatus(`❌ ${data.error || 'Login failed'}`, 'error');
+        }
+      } catch (error) {
+        showStatus(`❌ Connection error: ${error.message}`, 'error');
+      }
+    }
+
+    function connectSocket() {
+      socket = io(API_URL, {
+        auth: { token }
+      });
+
+      socket.on('connect', () => {
+        console.log('✅ Socket connected:', socket.id);
+        document.getElementById('connectionStatus').textContent = '🟢 Connected';
+        document.getElementById('connectionStatus').style.color = '#25d366';
+        addSystemMessage('✅ Connected to server');
+      });
+
+      socket.on('receive-message', (data) => {
+        console.log('📨 Message received:', data);
+        // Remove "Sending..." message
+        const statusMessages = document.querySelectorAll('.status.info');
+        statusMessages.forEach(msg => {
+          if (msg.textContent.includes('Sending...')) {
+            msg.remove();
+          }
+        });
+        addMessage(data);
+      });
+
+      socket.on('user-typing', (data) => {
+        console.log('⌨️ User typing:', data);
+        if (data.isTyping) {
+          addSystemMessage('⌨️ Someone is typing...');
+        }
+      });
+
+      socket.on('disconnect', () => {
+        console.log('❌ Socket disconnected');
+        document.getElementById('connectionStatus').textContent = '🔴 Disconnected';
+        document.getElementById('connectionStatus').style.color = '#dc3545';
+        addSystemMessage('❌ Disconnected from server');
+      });
+
+      socket.on('error', (error) => {
+        console.error('❌ Socket error:', error);
+        addSystemMessage(`❌ Error: ${error.message || JSON.stringify(error)}`, 'error');
+      });
+
+      socket.on('connect_error', (error) => {
+        console.error('❌ Connection error:', error);
+        addSystemMessage(`❌ Connection failed: ${error.message}`, 'error');
+        document.getElementById('connectionStatus').textContent = '🔴 Connection Error';
+        document.getElementById('connectionStatus').style.color = '#dc3545';
+      });
+    }
+
+    function showChatSection() {
+      document.getElementById('loginSection').style.display = 'none';
+      document.getElementById('chatSection').style.display = 'block';
+      document.getElementById('userName').textContent = currentUser.name;
+      document.getElementById('userEmail').textContent = currentUser.email;
+    }
+
+    function joinChat() {
+      const chatId = document.getElementById('chatId').value;
+      if (!chatId) {
+        alert('Please enter a Chat ID');
+        return;
+      }
+
+      currentChatId = chatId;
+      socket.emit('join-chat', chatId);
+      addSystemMessage(`📍 Joined chat: ${chatId}`);
+      console.log('Joined chat:', chatId);
+    }
+
+    function sendMessage() {
+      const content = document.getElementById('messageInput').value.trim();
+      
+      if (!content) {
+        alert('Please enter a message');
+        return;
+      }
+
+      if (!currentChatId) {
+        alert('Please join a chat first');
+        return;
+      }
+
+      if (!socket || !socket.connected) {
+        addSystemMessage('❌ Not connected to server. Please refresh and login again.', 'error');
+        return;
+      }
+
+      const messageData = {
+        chat_id: currentChatId,
+        content: content
+      };
+
+      console.log('📤 Sending message:', messageData);
+      socket.emit('send-message', messageData);
+      addSystemMessage('📤 Sending...', 'info');
+      
+      document.getElementById('messageInput').value = '';
+    }
+
+    function handleKeyPress(event) {
+      if (event.key === 'Enter') {
+        sendMessage();
+      }
+    }
+
+    function addMessage(data) {
+      const messagesDiv = document.getElementById('messages');
+      const messageDiv = document.createElement('div');
+      
+      const isSent = data.sender_id._id === currentUser.id || data.sender_id === currentUser.id;
+      messageDiv.className = `message ${isSent ? 'sent' : 'received'}`;
+      
+      const senderName = data.sender_id.name || 'Unknown';
+      const time = new Date(data.timestamp).toLocaleTimeString();
+      
+      messageDiv.innerHTML = `
+        <div>${data.content}</div>
+        <div class="message-info">${isSent ? 'You' : senderName} • ${time}</div>
+      `;
+      
+      messagesDiv.appendChild(messageDiv);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    function addSystemMessage(text, type = 'info') {
+      const messagesDiv = document.getElementById('messages');
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `status ${type}`;
+      messageDiv.textContent = text;
+      messagesDiv.appendChild(messageDiv);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    function logout() {
+      if (socket) {
+        socket.disconnect();
+      }
+      token = null;
+      currentUser = null;
+      currentChatId = null;
+      
+      document.getElementById('loginSection').style.display = 'block';
+      document.getElementById('chatSection').style.display = 'none';
+      document.getElementById('messages').innerHTML = '';
+      document.getElementById('loginStatus').innerHTML = '';
+    }
+
+    // Auto-connect on page load if testing
+    console.log('🚀 WhatsApp Clone Test Page Ready');
+    console.log('📝 Instructions:');
+    console.log('1. Enter credentials and click Login');
+    console.log('2. Join a chat using a Chat ID');
+    console.log('3. Send messages');
+    console.log('4. Open in another browser tab to test real-time messaging');
+  </script>
+</body>
+</html>

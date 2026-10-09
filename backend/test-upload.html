@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MinIO Upload Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], input[type="password"], input[type="file"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #25D366;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #1ea952;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        img {
+            max-width: 100%;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 MinIO Upload Test</h1>
+    
+    <div class="form-group">
+        <h2>Step 1: Register/Login</h2>
+        <label for="email">Email:</label>
+        <input type="text" id="email" value="test@test.com">
+        
+        <label for="password">Password:</label>
+        <input type="password" id="password" value="test123">
+        
+        <button onclick="register()">Register</button>
+        <button onclick="login()">Login</button>
+    </div>
+    
+    <div class="form-group">
+        <h2>Step 2: Upload File</h2>
+        <label for="file">Choose file:</label>
+        <input type="file" id="file" accept="image/*,video/*,.pdf,.doc,.docx">
+        
+        <button onclick="uploadProfile()">Upload Profile Picture</button>
+        <button onclick="uploadMedia()">Upload Chat Media</button>
+    </div>
+    
+    <div id="result"></div>
+
+    <script>
+        let token = '';
+
+        async function register() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: email.split('@')[0],
+                        email,
+                        password
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    token = data.token;
+                    showResult('Registration successful! Token saved.', 'success');
+                } else {
+                    showResult('Registration failed: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showResult('Error: ' + error.message, 'error');
+            }
+        }
+
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    token = data.token;
+                    showResult('Login successful! Token saved.', 'success');
+                } else {
+                    showResult('Login failed: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showResult('Error: ' + error.message, 'error');
+            }
+        }
+
+        async function uploadProfile() {
+            if (!token) {
+                showResult('Please login first!', 'error');
+                return;
+            }
+            
+            const fileInput = document.getElementById('file');
+            if (!fileInput.files.length) {
+                showResult('Please select a file!', 'error');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/media/upload/profile', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult(
+                        'Profile picture uploaded successfully!<br>' +
+                        `File URL: <a href="${data.fileUrl}" target="_blank">${data.fileUrl}</a><br>` +
+                        `<img src="${data.fileUrl}" alt="Uploaded image">`,
+                        'success'
+                    );
+                } else {
+                    showResult('Upload failed: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showResult('Error: ' + error.message, 'error');
+            }
+        }
+
+        async function uploadMedia() {
+            if (!token) {
+                showResult('Please login first!', 'error');
+                return;
+            }
+            
+            const fileInput = document.getElementById('file');
+            if (!fileInput.files.length) {
+                showResult('Please select a file!', 'error');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/media/upload/media', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult(
+                        'Media uploaded successfully!<br>' +
+                        `Bucket: ${data.bucket}<br>` +
+                        `File URL: <a href="${data.fileUrl}" target="_blank">${data.fileUrl}</a><br>` +
+                        (data.fileUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? 
+                            `<img src="${data.fileUrl}" alt="Uploaded image">` : ''),
+                        'success'
+                    );
+                } else {
+                    showResult('Upload failed: ' + data.error, 'error');
+                }
+            } catch (error) {
+                showResult('Error: ' + error.message, 'error');
+            }
+        }
+
+        function showResult(message, type) {
+            const result = document.getElementById('result');
+            result.innerHTML = message;
+            result.className = type;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+{
+  "name": "whatsapp-backend",
+  "version": "1.0.0",
+  "description": "WhatsApp Clone Backend - Big Data Project",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
+  },
+  "keywords": [
+    "whatsapp",
+    "chat",
+    "socket.io",
+    "mongodb"
+  ],
+  "author": "Team: Waliya Khan, Wosqa Munir, Laiba Imran",
+  "license": "MIT",
+  "dependencies": {
+    "@faker-js/faker": "^9.9.0",
+    "axios": "^1.13.2",
+    "bcrypt": "^5.1.1",
+    "cassandra-driver": "^4.6.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^8.2.1",
+    "helmet": "^7.1.0",
+    "joi": "^17.11.0",
+    "jsonwebtoken": "^9.0.2",
+    "kafkajs": "^2.2.4",
+    "minio": "^8.0.6",
+    "mongoose": "^8.0.0",
+    "multer": "^2.0.2",
+    "redis": "^4.6.0",
+    "socket.io": "^4.6.0",
+    "socket.io-client": "^4.8.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
